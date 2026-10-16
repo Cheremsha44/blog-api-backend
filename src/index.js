@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { prisma } from './lib/prisma.js';
 import authRouter from './routes/auth.js';
+import postRouter from './routes/postRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +24,8 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
-app.use('/auth', authRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/posts', postRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });
