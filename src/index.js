@@ -1,9 +1,12 @@
 import 'dotenv/config';
+
 import express from 'express';
 import cors from 'cors';
 import { prisma } from './lib/prisma.js';
+
 import authRouter from './routes/auth.js';
 import postRouter from './routes/postRoutes.js';
+import commentRouter from './routes/commentRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +29,7 @@ app.get('/api/health/db', async (req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/posts', postRouter);
+app.use('/api/comments', commentRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });
