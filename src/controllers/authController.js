@@ -104,7 +104,14 @@ export const me = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json({ user: { id: user.id, email: user.email, name: user.name } });
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+      },
+    });
   } catch (err) {
     next(err);
   }

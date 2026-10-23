@@ -23,7 +23,9 @@ export const getAllPosts = async (req, res, next) => {
 
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
-        where,
+        where: {
+          published: true,
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
