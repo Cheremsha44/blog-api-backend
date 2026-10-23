@@ -30,6 +30,7 @@ export const getAllPosts = async (req, res, next) => {
         select: {
           id: true,
           title: true,
+          content: true,
           createdAt: true,
           author: { select: { id: true, name: true } },
           _count: { select: { comments: true } },
@@ -90,6 +91,9 @@ export const getPostById = async (req, res, next) => {
         },
       },
     });
+    if (!posts) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
     res.json(posts);
   } catch (err) {
     next(err);
