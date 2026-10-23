@@ -13,10 +13,12 @@ export const registration = async (req, res, next) => {
     if (!password) {
       res.status(400).json({ message: 'You must provide password' });
     }
-    if (!email || !name || password.length <= 8) {
+    if (password.length <= 8) {
+      res.status(400).json({ message: 'Password must be more than 8 symbols' });
+    }
+    if (!email || !name) {
       return res.status(400).json({
-        message:
-          'You must provide email, name and password with length more than 8 symbols',
+        message: 'You must provide email, name',
       });
     }
     if (await prisma.user.findUnique({ where: { email } })) {
@@ -88,6 +90,21 @@ export const protectedToken = (req, res, next) => {
       }
       res.json({ message: 'Protected data', user: decoded });
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const me = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ user: { id: user.id, email: user.email, name: user.name } });
   } catch (err) {
     next(err);
   }

@@ -3,6 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { prisma } from './lib/prisma.js';
+import morgan from 'morgan';
 
 import authRouter from './routes/auth.js';
 import postRouter from './routes/postRoutes.js';
@@ -13,6 +14,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use(morgan('dev'));
 
 app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok' });
