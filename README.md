@@ -1,90 +1,130 @@
-# Express API Template
+# Blog API
 
-Шаблон бэкенда: Express + Prisma 7 + PostgreSQL (ESM).
+REST API for a blog: user accounts, posts (drafts and published), comments, and ownership-based access control. Built with Node.js, Express, Prisma and PostgreSQL.
 
-## Стек
+**Live demo:** https://clever-moonbeam-39a68f.netlify.app
+**API health check:** https://blog-api-backend-wz4t.onrender.com/api/health
+**Frontend repository:** https://github.com/Cheremsha44/blog-frontend
 
-- Node.js (ESM, `"type": "module"`)
-- Express
-- Prisma 7 + `@prisma/adapter-pg`
-- PostgreSQL
-- ESLint + Prettier
+> The API runs on a free Render instance, so the first request after a period of inactivity can take up to ~50 seconds while the server wakes up.
 
-## Структура
+<!-- Add a screenshot or GIF of the app here, e.g. ![Blog](docs/screenshot.png) -->
+
+## Features
+
+- Registration and login with hashed passwords (bcrypt) and JWT authentication
+- `GET /api/auth/me` to restore a session from a token
+- Posts with draft / published states and paginated public feed
+- Comments on published posts
+- Ownership checks: only the author can edit or delete their posts and comments
+- Input validation, normalized emails, consistent JSON error responses
+- CORS allowlist, request logging (morgan)
+- Health check endpoints for the server and the database
+
+## Tech stack
+
+| Area      | Tools                                                 |
+| --------- | ----------------------------------------------------- |
+| Runtime   | Node.js (ES modules)                                  |
+| Framework | Express                                               |
+| Database  | PostgreSQL (Neon)                                     |
+| ORM       | Prisma 7 with the `@prisma/adapter-pg` driver adapter |
+| Auth      | jsonwebtoken, bcryptjs                                |
+| Hosting   | Render (API), Neon (database)                         |
+
+## API overview
+
+All routes are prefixed with `/api`.
+
+| Method | Path                    | Auth         | Description                                  |
+| ------ | ----------------------- | ------------ | -------------------------------------------- |
+| POST   | `/auth/registration`    | no           | Create an account, returns `{ user, token }` |
+| POST   | `/auth/login`           | no           | Log in, returns `{ user, token }`            |
+| GET    | `/auth/me`              | yes          | Current user                                 |
+| GET    | `/posts?page=&limit=`   | no           | Published posts, paginated                   |
+| GET    | `/posts/mine`           | yes          | Current user's posts, including drafts       |
+| GET    | `/posts/:id`            | no           | Single post with author                      |
+| POST   | `/posts`                | yes          | Create a post                                |
+| PATCH  | `/posts/:id`            | yes (author) | Update a post                                |
+| DELETE | `/posts/:id`            | yes (author) | Delete a post                                |
+| GET    | `/posts/:id/comments`   | no           | Comments of a published post                 |
+| POST   | `/posts/:id/comments`   | yes          | Add a comment                                |
+| PATCH  | `/comments/:id`         | yes (author) | Edit a comment                               |
+| DELETE | `/comments/:id`         | yes (author) | Delete a comment                             |
+| GET    | `/health`, `/health/db` | no           | Server and database status                   |
+
+Authenticated requests send the token as `Authorization: Bearer <token>`.
+
+## Data model
+
+`User` has many `Post` and `Comment`; `Post` has many `Comment`. Posts have a `published` flag (draft by default). Deleting a user or a post cascades to their comments. See [`prisma/schema.prisma`](prisma/schema.prisma).
+
+## Project structure
 
 ```
-prisma/
-  schema.prisma        # схема БД
-  migrations/          # миграции (создаются автоматически)
+prisma/              schema and migrations
 src/
-  controllers/
-  lib/prisma.js        # PrismaClient (рантайм)
-  middleware/
-  routes/
-  index.js             # точка входа
-prisma.config.js       # конфиг Prisma CLI
+  controllers/       request handlers
+  middleware/        auth, ownership and availability checks
+  routes/            route definitions
+  lib/prisma.js      Prisma client with the pg adapter
+  index.js           app entry point
 ```
 
-## Запуск
+## Getting started
 
-### 1. Установить зависимости
+Requirements: Node.js 20+ and a PostgreSQL database (local or hosted).
 
 ```bash
+git clone https://github.com/Cheremsha44/blog-api-backend
+cd blog-api-backend
 npm install
-```
-e
-```bash
+cp .env.example .env      # then fill in the values
+npx prisma migrate dev
 npx prisma generate
+npm run dev
 ```
-### 2. Настроить окружение
+
+The server starts on `http://localhost:3000`. Check `http://localhost:3000/api/health`.
+
+### Environment variables
+
+| Variable       | Description                                         |
+| -------------- | --------------------------------------------------- |
+| `DATABASE_URL` | PostgreSQL connection string                        |
+| `JWT_SECRET`   | Long random string used to sign tokens              |
+| `CLIENT_URL`   | Frontend origin allowed by CORS (no trailing slash) |
+| `PORT`         | Server port (default `3000`)                        |
+
+Generate a secret with:
 
 ```bash
-cp .env.example .env
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-Открой `.env` и укажи строку подключения к своей базе:
+## Deployment
 
-```
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-```
+- **Database:** Neon (PostgreSQL)
+- **API:** Render web service
+  - Build command: `npm install --production=false && npx prisma generate && npx prisma migrate deploy`
+  - Start command: `npm start`
+  - Environment variables: `DATABASE_URL`, `JWT_SECRET`, `CLIENT_URL`
 
-База должна существовать и быть запущена.
+## Security notes
 
-### 3. Сгенерировать клиент и применить миграции
+- Passwords are stored only as bcrypt hashes and are never returned by the API.
+- Tokens are signed with a server-side secret and expire after 7 days.
+- Ownership is verified on the server for every write operation; the frontend only hides buttons for convenience.
+- Login returns the same error for an unknown email and a wrong password.
+- Secrets live in environment variables and are not committed.
 
-```bash
-npx prisma migrate dev --name init
-npx prisma generate
-```
+## Roadmap
 
-Команды создадут таблицы по `schema.prisma` и сгенерируют Prisma Client.
+- Admin role so only the site owner can publish posts
+- Rate limiting on auth routes and security headers (helmet)
+- Automated tests for access-control scenarios (supertest)
+- Refresh tokens or httpOnly cookies instead of long-lived access tokens
 
-### 4. Запустить серверы
+## Author
 
-```bash
-npm run dev     # разработка (nodemon)
-npm start       # прод
-```
-
-## Работа с БД
-
-После изменения `schema.prisma`:
-
-```bash
-npx prisma migrate dev --name название_миграции
-```
-
-Остальные команды:
-
-```bash
-npx prisma generate        # перегенерировать клиент
-npx prisma studio          # GUI для просмотра данных
-npx prisma migrate deploy  # применить миграции на проде
-npx prisma migrate reset   # снести БД и накатить заново (только dev!)
-```
-
-## Переменные окружения
-
-| Переменная     | Описание                    |
-| -------------- | --------------------------- |
-| `DATABASE_URL` | Строка подключения к Postgres |
+Built by [Cheremsha44](https://github.com/Cheremsha44).
