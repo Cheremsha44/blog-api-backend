@@ -12,10 +12,21 @@ import commentRouter from './routes/commentRoutes.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = ['http://localhost:5173', process.env.CLIENT_URL];
 
-app.use(morgan('dev'));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  }),
+);
+app.use(express.json());
 
 app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok' });
@@ -39,13 +50,12 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err);
   res
     .status(err.status || 500)
     .json({ message: err.message || 'Server error' });
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
